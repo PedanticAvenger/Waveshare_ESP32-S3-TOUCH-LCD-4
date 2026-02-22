@@ -1,0 +1,196 @@
+esphome:
+  name: waveshare-4inch-r4
+  friendly_name: Waveshare 4inch Rev4
+
+  # Boot Sequence to set backlight and make a noise to test those functions
+  on_boot:
+    then:
+      # Turn down the backlight
+      - delay: 1000ms
+      - light.turn_on:
+          id: display_backlight
+          brightness: 50%
+      - delay: 500ms
+      - switch.turn_on: board_buzzer
+      - delay: 1000ms
+      - switch.turn_off: board_buzzer
+
+
+external_components:
+  - source: github://pr#10071
+    components: [waveshare_io_ch32v003]
+    refresh: 1h
+  - source: github://pr#14193
+    components: [gt911]
+    refresh: 1h
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+  # Flash/RAM settings for high performance
+  flash_size: 16MB
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: DEBUG
+
+# ================================================================
+# I2C Buses
+# ================================================================
+i2c:
+  # IO Expander, I2C lines on external connector, RTC, Touchscreen
+  - id: bus_a
+    setup_priority: 1000
+    sda: GPIO15
+    scl: GPIO7
+    scan: true
+    frequency: 400kHz
+
+
+# ================================================================
+# SPI for display
+# ================================================================
+spi:
+  - id: spi0
+    clk_pin: GPIO2
+    mosi_pin: GPIO1
+
+# ================================================================
+# IO Expander (New Waveshare mcu based ch32v003)
+# Using external PR component until integrated.
+# ================================================================
+waveshare_io_ch32v003:
+  - id: wave_io_hub
+    setup_priority: 850
+    address: 0x24
+    i2c_id: bus_a
+
+
+# ================================================================
+# Outputs on the IO Expander
+# ================================================================
+output:
+  # PWM output for backlight control.
+  # Inverted and zero_means_zero to match Waveshare's circuitry and prevent
+  # flickering at low levels.
+  - platform: waveshare_io_ch32v003
+    waveshare_io_ch32v003_id: wave_io_hub
+    id: wave_io_pwm_output
+    inverted: true
+    zero_means_zero: true
+    safe_pwm_levels:  # 0...255
+      min_value: 0    # Default: 0
+      max_value: 247  # Default: 247. Safe max for ESP32S3-Touch-LCD-7B circuitry
+
+switch: #Need to define and use this or buzzer just stays on at boot.
+  - platform: gpio
+    name: "Onboard Buzzer"
+    id: board_buzzer
+    setup_priority: 700
+    pin:
+      waveshare_io_ch32v003: wave_io_hub
+      number: 6
+      mode:
+        output: true
+      inverted: False
+
+# ================================================================
+# Light (Backlight Control)
+# ================================================================
+light:
+  - platform: monochromatic
+    name: "Display Backlight"
+    id: display_backlight
+    output: wave_io_pwm_output
+    restore_mode: ALWAYS_ON
+    default_transition_length: 1s
+
+# ================================================================
+# Touchscreen (GT911)
+# Don't specify the I2C address here, the driver looks for it if the interrupt pin isn't set.
+# The interrupt pin on this board is either on the IO expander or not connected at all, 
+# so we'll just let the driver scan for the address.
+# ================================================================
+touchscreen:
+  - platform: gt911
+    setup_priority: 600
+    id: touch_panel
+    i2c_id: bus_a
+    display: lcd_display
+    update_interval: 20ms
+
+    intcfg_pin:
+      waveshare_io_ch32v003: wave_io_hub
+      number: 2
+
+    reset_pin:
+      waveshare_io_ch32v003: wave_io_hub
+      number: 1
+
+    # on_touch:
+    #   - logger.log:
+    #       format: "Touch at %d/%d"
+    #       args: [touch.x, touch.y]
+
+# ================================================================
+# Display Driver (ST7701S via mipi_rgb)
+# ================================================================
+display:
+  - platform: mipi_rgb
+    setup_priority: 750
+    model: WAVESHARE-4-480X480
+    id: lcd_display
+    reset_pin:
+      waveshare_io_ch32v003: wave_io_hub
+      number: 3
+    pixel_mode: 18bit
+    init_sequence:
+      - [0x11, 0x00]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xC0, 0x3B, 0x00]
+      - [0xC1, 0x0D, 0x02]
+      - [0xC2, 0x21, 0x08]
+      - [0xCD, 0x08]
+      - [0xB0, 0x00, 0x11, 0x18, 0x0E, 0x11, 0x06, 0x07, 0x08, 0x07, 0x22, 0x04, 0x12, 0x0F, 0xAA, 0x31, 0x18]
+      - [0xB1, 0x00, 0x11, 0x19, 0x0E, 0x12, 0x07, 0x08, 0x08, 0x08, 0x22, 0x04, 0x11, 0x11, 0xA9, 0x32, 0x18]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x11]
+      - [0xB0, 0x60]
+      - [0xB1, 0x30]
+      - [0xB2, 0x87]
+      - [0xB3, 0x80]
+      - [0xB5, 0x49]
+      - [0xB7, 0x85]
+      - [0xB8, 0x21]
+      - [0xC1, 0x78]
+      - [0xC2, 0x78]
+      - delay 20ms
+      - [0xE0, 0x00, 0x1B, 0x02]
+      - [0xE1, 0x08, 0xA0, 0x00, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x44, 0x44]
+      - [0xE2, 0x11, 0x11, 0x44, 0x44, 0xED, 0xA0, 0x00, 0x00, 0xEC, 0xA0, 0x00, 0x00]
+      - [0xE3, 0x00, 0x00, 0x11, 0x11]
+      - [0xE4, 0x44, 0x44]
+      - [0xE5, 0x0A, 0xE9, 0xD8, 0xA0, 0x0C, 0xEB, 0xD8, 0xA0, 0x0E, 0xED, 0xD8, 0xA0, 0x10, 0xEF, 0xD8, 0xA0]
+      - [0xE6, 0x00, 0x00, 0x11, 0x11]
+      - [0xE7, 0x44, 0x44]
+      - [0xE8, 0x09, 0xE8, 0xD8, 0xA0, 0x0B, 0xEA, 0xD8, 0xA0, 0x0D, 0xEC, 0xD8, 0xA0, 0x0F, 0xEE, 0xD8, 0xA0]
+      - [0xEB, 0x02, 0x00, 0xE4, 0xE4, 0x88, 0x00, 0x40]
+      - [0xEC, 0x3C, 0x00]
+      - [0xED, 0xAB, 0x89, 0x76, 0x54, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x20, 0x45, 0x67, 0x98, 0xBA]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]
+
+# Init sequence built from:
+# https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/esp32_s3_touch_lcd_4.c
+# Pin verifications done against:
+# https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/include/bsp/esp32_s3_touch_lcd_4.h
+
+# ================================================================
+# LVGL with default demo page
+# ================================================================
+
+lvgl:
