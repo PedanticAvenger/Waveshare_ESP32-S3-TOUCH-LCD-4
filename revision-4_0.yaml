@@ -20,7 +20,8 @@ external_components:
   - source: github://pr#10071
     components: [waveshare_io_ch32v003]
     refresh: 1h
-  - source: github://pr#14193
+
+  - source: github://pr#14358
     components: [gt911]
     refresh: 1h
 
@@ -29,6 +30,8 @@ esp32:
   variant: esp32s3
   framework:
     type: esp-idf
+    sdkconfig_options:
+      CONFIG_SPIRAM_XIP_FROM_PSRAM: "y" # Keep screen from flashing during OTA
 
   # Flash/RAM settings for high performance
   flash_size: 16MB
@@ -71,6 +74,48 @@ waveshare_io_ch32v003:
     address: 0x24
     i2c_id: bus_a
 
+# ================================================================
+# Real Time Clock (RTC) 
+# ================================================================
+time:
+  - platform: pcf85063
+    setup_priority: 600
+    id: pcf85063_time
+    update_interval: never
+    i2c_id: bus_a
+
+# ================================================================
+# UART
+# ================================================================
+  uart:
+    - id: mod_uart
+      tx_pin: GPIO43
+      rx_pin: GPIO44
+      baud_rate: 115200
+
+# ================================================================
+# Modbus (RS485) 
+# ================================================================  
+  modbus:
+    - id: modbus
+      uart_id: mod_uart
+
+  modbus_controller:
+    - id: modbus_device
+      address: 1
+      modbus_id: modbus1
+
+
+# ===============================================================
+# CANBUS (TJA1051)
+# ================================================================ 
+# I haven't had a chance to test this yet so config is a guess.
+canbus:
+  - id: can0
+    tx_pin: GPIO6
+    rx_pin: GPIO0
+    mode: NORMAL
+    baud_rate: 500kbps
 
 # ================================================================
 # Outputs on the IO Expander
@@ -188,6 +233,7 @@ display:
 # https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/esp32_s3_touch_lcd_4.c
 # Pin verifications done against:
 # https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/include/bsp/esp32_s3_touch_lcd_4.h
+
 
 # ================================================================
 # LVGL with default demo page
