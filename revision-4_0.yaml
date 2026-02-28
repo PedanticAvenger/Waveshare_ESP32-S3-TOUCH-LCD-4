@@ -21,8 +21,8 @@ external_components:
     components: [waveshare_io_ch32v003]
     refresh: 1h
 
-  # External component for gt911 removed, changes were merged into base component.
-  
+  # External component for gt911 removed, changes were merged into base esphome component.
+
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3
@@ -157,7 +157,7 @@ light:
 # ================================================================
 # Touchscreen (GT911)
 # Don't specify the I2C address here, the driver looks for it if the interrupt pin isn't set.
-# The interrupt pin on this board is either on the IO expander 
+# The interrupt pin on this board is on the IO expander 
 # so we'll just let the driver scan for or set the address.
 # ================================================================
 touchscreen:
@@ -183,6 +183,8 @@ touchscreen:
 
 # ================================================================
 # Display Driver (ST7701S via mipi_rgb)
+# Pin verifications done against:
+# https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/include/bsp/esp32_s3_touch_lcd_4.h
 # ================================================================
 display:
   - platform: mipi_rgb
@@ -193,6 +195,8 @@ display:
       waveshare_io_ch32v003: wave_io_hub
       number: 3
     pixel_mode: 18bit
+    # Init sequence built from:
+    # https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/esp32_s3_touch_lcd_4.c
     init_sequence:
       - [0x11, 0x00]
       - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
@@ -226,12 +230,6 @@ display:
       - [0xEC, 0x3C, 0x00]
       - [0xED, 0xAB, 0x89, 0x76, 0x54, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x20, 0x45, 0x67, 0x98, 0xBA]
       - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]
-
-# Init sequence built from:
-# https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/esp32_s3_touch_lcd_4.c
-# Pin verifications done against:
-# https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_s3_touch_lcd_4/include/bsp/esp32_s3_touch_lcd_4.h
-
 
 # ================================================================
 # LVGL with default demo page
