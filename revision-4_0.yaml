@@ -21,10 +21,8 @@ external_components:
     components: [waveshare_io_ch32v003]
     refresh: 1h
 
-  - source: github://pr#14358
-    components: [gt911]
-    refresh: 1h
-
+  # External component for gt911 removed, changes were merged into base component.
+  
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3
