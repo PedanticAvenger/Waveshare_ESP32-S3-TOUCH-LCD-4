@@ -159,8 +159,8 @@ light:
 # ================================================================
 # Touchscreen (GT911)
 # Don't specify the I2C address here, the driver looks for it if the interrupt pin isn't set.
-# The interrupt pin on this board is either on the IO expander or not connected at all, 
-# so we'll just let the driver scan for the address.
+# The interrupt pin on this board is either on the IO expander 
+# so we'll just let the driver scan for or set the address.
 # ================================================================
 touchscreen:
   - platform: gt911
