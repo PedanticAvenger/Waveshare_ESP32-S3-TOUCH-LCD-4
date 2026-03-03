@@ -168,7 +168,7 @@ touchscreen:
     display: lcd_display
     update_interval: 20ms
 
-    intcfg_pin:
+    interrupt_pin:
       waveshare_io_ch32v003: wave_io_hub
       number: 2
 
